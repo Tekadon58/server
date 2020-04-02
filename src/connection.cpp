@@ -267,6 +267,7 @@ void Connection::parsePacket(const boost::system::error_code& error)
 		return;
 	}
 
+	uint32_t recvChecksum = msg.get<uint32_t>();
 	if (!receivedFirst) {
 		// First message received
 		receivedFirst = true;
@@ -281,7 +282,6 @@ void Connection::parsePacket(const boost::system::error_code& error)
 				checksum = 0;
 			}
 
-			uint32_t recvChecksum = msg.get<uint32_t>();
 			if (recvChecksum != checksum) {
 				// it might not have been the checksum, step back
 				msg.skipBytes(-NetworkMessage::CHECKSUM_LENGTH);
@@ -294,13 +294,12 @@ void Connection::parsePacket(const boost::system::error_code& error)
 				return;
 			}
 		} else {
-			msg.get<uint32_t>();
 			msg.skipBytes(1);    // Skip protocol ID
 		}
 
 		protocol->onRecvFirstMessage(msg);
 	} else {
-		if(detectAttack(recvPacket)) {
+		if (detectAttack(recvChecksum)) {
 			std::cout << "[Network protection] - attack detected. IP: ["<< convertIPToString(getIP())<< "] - disconnected" << std::endl;
 			close(FORCE_CLOSE);
 		} else {
